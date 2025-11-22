@@ -1,21 +1,24 @@
+#include <stdio.h>
 #include <raylib.h>
 #include <stddef.h>
 
 const int screenWidth = 800;
 const int screenHeight = 600;
 
+const int WHITE_TURN = 1;
+const int BLACK_TURN = 2;
+
 const float boardWidth = 480;
 const float boardHeight = 480;
 const float squareSize = 60;
 const float boardOffsetX = 20;
-const float boardOffsetY = 20; 
+const float boardOffsetY = 20;
 
 typedef struct
 {
     int rank;
     int file;
 } Position_t;
-
 
 enum
 {
@@ -41,6 +44,7 @@ Position_t targetSquare = {0, 0};
 
 Rectangle piecesRects[12] = {0};
 int board[8][8] = {0};
+int currentTurn = WHITE_TURN;
 
 void drawPiece(int piece, int rank, int file)
 {
@@ -59,6 +63,7 @@ void drawPiece(int piece, int rank, int file)
         0.0f,
         WHITE);
 };
+
 void drawBoard()
 {
     DrawTexturePro(
@@ -80,7 +85,29 @@ void drawBoard()
             }
         }
     }
+
+    // Highlight selected piece
+    if (selectedPiece.rank != 0 && selectedPiece.file != 0)
+    {
+        DrawRectangleLinesEx(
+            (Rectangle){(selectedPiece.file - 1) * squareSize + boardOffsetX,
+                        (8 - selectedPiece.rank) * squareSize + boardOffsetY,
+                        squareSize,
+                        squareSize},
+            4.0f, YELLOW);
+    }
+    // Highlight target square
+    if (targetSquare.rank != 0 && targetSquare.file != 0)
+    {
+        DrawRectangleLinesEx(
+            (Rectangle){(targetSquare.file - 1) * squareSize + boardOffsetX,
+                        (8 - targetSquare.rank) * squareSize + boardOffsetY,
+                        squareSize,
+                        squareSize},
+            4.0f, GREEN);
+    }
 }
+
 void resetStartingPosition()
 {
     // Initialize starting position
@@ -100,6 +127,33 @@ void resetStartingPosition()
     board[7][3] = BLACK_QUEEN;
     board[7][4] = BLACK_KING;
 }
+
+void clearSelection()
+{
+    selectedPiece.rank = 0;
+    selectedPiece.file = 0;
+    targetSquare.rank = 0;
+    targetSquare.file = 0;
+}
+
+bool validMove(Position_t from, Position_t to)
+{
+    // check turn
+    int piece = board[from.rank - 1][from.file - 1];
+    if (currentTurn == WHITE_TURN && piece >= BLACK_KING)
+    {
+        clearSelection();
+        return false;
+    }
+    if (currentTurn == BLACK_TURN && piece < BLACK_KING)
+    {
+        clearSelection();
+        return false;
+    }
+    // Placeholder for move validation logic
+    return true;
+}
+
 void initGame()
 {
     InitWindow(screenWidth, screenHeight, "Chess Game!");
@@ -125,26 +179,77 @@ void initGame()
 
     SetTargetFPS(60); // Set our game to run at 60 frames-per-second
 }
-void updateGame() {
+
+void updateGame()
+{
     // Update game logic here (e.g., handle user input, move pieces, etc.)
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+    {
         // Example: Print mouse position on click
         Vector2 mousePos = GetMousePosition();
 
         // check if click is inside the board
         if (mousePos.x >= boardOffsetX && mousePos.x <= boardOffsetX + boardWidth &&
-            mousePos.y >= boardOffsetY && mousePos.y <= boardOffsetY + boardHeight) {
+            mousePos.y >= boardOffsetY && mousePos.y <= boardOffsetY + boardHeight)
+        {
 
             // Convert mouse position to board coordinates
             int file = (int)((mousePos.x - boardOffsetX) / squareSize) + 1;
             int rank = 8 - (int)((mousePos.y - boardOffsetY) / squareSize);
-            if (file >= 1 && file <= 8 && rank >= 1 && rank <= 8 && board[rank - 1][file - 1] != 0) {
-                // Print the selected square
-                printf("Selected square: Rank %d, File %d\n", rank, file);
+            if (file >= 1 && file <= 8 && rank >= 1 && rank <= 8)
+            {
+                if (board[rank - 1][file - 1] != 0)
+                {
+                    selectedPiece.rank = rank;
+                    selectedPiece.file = file;
+                    targetSquare.rank = 0;
+                    targetSquare.file = 0;
+                    printf("Selected piece at %c%d\n", 'a' + file - 1, rank);
+                }
+                else
+                {
+                    if (selectedPiece.rank != 0 && selectedPiece.file != 0)
+                    {
+                        targetSquare.rank = rank;
+                        targetSquare.file = file;
+                        printf("Target square set to %c%d\n", 'a' + file - 1, rank);
+                        // Move piece if valid
+                        if (validMove(selectedPiece, targetSquare))
+                        {
+                            int piece = board[selectedPiece.rank - 1][selectedPiece.file - 1];
+                            board[targetSquare.rank - 1][targetSquare.file - 1] = piece;
+                            board[selectedPiece.rank - 1][selectedPiece.file - 1] = 0;
+                            printf("Moved piece to %c%d\n", 'a' + file - 1, rank);
+                            // Clear selection
+                            clearSelection();
+                            // Switch turn
+                            if (currentTurn == WHITE_TURN)
+                            {
+                                currentTurn = BLACK_TURN;
+                            }
+                            else
+                            {
+                                currentTurn = WHITE_TURN;
+                            }
+                        }
+                    }
+                }
             }
         }
-    }   
+
+        // Outside board click clears selection
+        else
+        {
+            selectedPiece.rank = 0;
+            selectedPiece.file = 0;
+            targetSquare.rank = 0;
+            targetSquare.file = 0;
+            printf("Selection cleared\n");
+        }
+
+    }
 }
+
 void drawGame()
 {
     BeginDrawing();
@@ -152,6 +257,7 @@ void drawGame()
     drawBoard();
     EndDrawing();
 }
+
 void unloadGame()
 {
     UnloadTexture(piecesTexture); // Unload texture
