@@ -150,6 +150,32 @@ bool validMove(Position_t from, Position_t to)
         clearSelection();
         return false;
     }
+
+    if (piece == WHITE_PAWN || piece == BLACK_PAWN)
+    {
+        int direction = (piece == WHITE_PAWN) ? 1 : -1;
+        // Single square move
+        if (to.file == from.file && to.rank == from.rank + direction &&
+            board[to.rank - 1][to.file - 1] == 0)
+        {
+            return true;
+        }
+        // Double square move from starting position
+        if (to.file == from.file && to.rank == from.rank + 2 * direction &&
+            ((piece == WHITE_PAWN && from.rank == 2) || (piece == BLACK_PAWN && from.rank == 7)) &&
+            board[from.rank - 1 + direction][from.file - 1] == 0 &&
+            board[to.rank - 1][to.file - 1] == 0)
+        {
+            return true;
+        }
+        // Capture move
+        if ((to.file == from.file + 1 || to.file == from.file - 1) && to.rank == from.rank + direction &&
+            board[to.rank - 1][to.file - 1] != 0)
+        {
+            return true;
+        }
+        return false;
+    }
     // Placeholder for move validation logic
     return true;
 }
